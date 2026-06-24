@@ -30,6 +30,7 @@ module.exports = defineConfig({
   },
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    redisUrl: process.env.REDIS_URL,
 
     http: {
       storeCors: process.env.STORE_CORS!,
@@ -40,6 +41,40 @@ module.exports = defineConfig({
     },
   },
   modules: [
+    // ── SmallTownWeb fork-tilpasning (additivt lag) ──────────────────────────
+    // Upstream wirer INGEN redis-moduler → workflow-engine/locking/event-bus/cache
+    // bruger in-memory "fake redis". Det HÆNGER `medusa db:migrate` (module-load,
+    // ep_poll) i deploy-konteksten. Spejler medusa-templates redis-moduler, BETINGET
+    // på REDIS_URL (uændret upstream-adfærd uden creds → ren merge).
+    ...(process.env.REDIS_URL
+      ? [
+          {
+            resolve: "@medusajs/medusa/cache-redis",
+            options: { redisUrl: process.env.REDIS_URL },
+          },
+          {
+            resolve: "@medusajs/medusa/event-bus-redis",
+            options: { redisUrl: process.env.REDIS_URL },
+          },
+          {
+            resolve: "@medusajs/medusa/workflow-engine-redis",
+            options: { redis: { url: process.env.REDIS_URL } },
+          },
+          {
+            resolve: "@medusajs/medusa/locking",
+            options: {
+              providers: [
+                {
+                  resolve: "@medusajs/medusa/locking-redis",
+                  id: "locking-redis",
+                  is_default: true,
+                  options: { redisUrl: process.env.REDIS_URL },
+                },
+              ],
+            },
+          },
+        ]
+      : []),
     {
       resolve: "@medusajs/medusa/file",
       options: {
