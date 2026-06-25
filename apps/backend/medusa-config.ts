@@ -30,6 +30,14 @@ module.exports = defineConfig({
   },
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    // ── SmallTownWeb fork-tilpasning (additivt lag) ──────────────────────────
+    // Tving SSL FRA på DB-forbindelsen. Upstream-essentials sætter INGEN
+    // databaseDriverOptions → Medusas default forsøger SSL i NODE_ENV=production.
+    // Mod en ikke-SSL Postgres (Coolify postgres:16-alpine) etableres en half-SSL-
+    // forbindelse der HÆNGER på første write (BEGIN bufres i TLS-laget) → uresolveret
+    // promise → ep_poll → `db:migrate` hænger ved knex tx-start (0 migrations).
+    // medusa-template har ssl:false → migrerer fint; det er forskellen.
+    databaseDriverOptions: { connection: { ssl: false } },
     redisUrl: process.env.REDIS_URL,
 
     http: {
